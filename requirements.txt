@@ -3,3 +3,4 @@ numpy
 opencv-python
 tqdm
 plantcv
+PyQt5

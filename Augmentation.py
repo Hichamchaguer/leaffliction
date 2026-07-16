@@ -257,12 +257,13 @@ if __name__ == '__main__':
     if os.path.isdir(args.path):
         images = Path(args.path).glob('**/*.JPG')
         for image in tqdm(images, desc=f'Copying images from {args.path} \
-                to augmented_directory', total=len(os.listdir(args.path))):
+                to augmented_directory', total=len(list(Path(args.path).glob('**/*.JPG')))):
             save_path = Path(
                 'data/images/augmented_directory/',
                 image.parent.stem)
             os.makedirs(save_path, exist_ok=True)
-            plt.imsave(Path(save_path, image.name), cv2.imread(str(image)))
+            img = cv2.imread(str(image))  # BGR format
+            cv2.imwrite(str(Path(save_path, image.name)), img)
 
         largest_directory = max(
             Path(
@@ -327,22 +328,23 @@ if __name__ == '__main__':
         img_name = Path(args.path).stem
 
         translated_img = aug.translation(img)
-        plt.imsave(img_name + '_Translation.JPG', translated_img)
+        cv2.imwrite(img_name + '_Translation.JPG', translated_img)
 
         flipped_img = aug.flip(img, axis=np.random.randint(0, 2))
-        plt.imsave(img_name + '_Flip.JPG', flipped_img)
+        cv2.imwrite(img_name + '_Flip.JPG', flipped_img)
 
         rotated_img = aug.rotate(img)
-        plt.imsave(img_name + '_Rotate.JPG', rotated_img)
+        cv2.imwrite(img_name + '_Rotate.JPG', rotated_img)
 
         blurred_img = aug.blur(img)
-        plt.imsave(img_name + '_Blur.JPG', blurred_img)
+        cv2.imwrite(img_name + '_Blur.JPG', blurred_img)
 
         cropped_img = aug.crop(img)
-        plt.imsave(img_name + '_Crop.JPG', cropped_img)
+        cv2.imwrite(img_name + '_Crop.JPG', cropped_img)
 
         contrast_img = aug.contrast(img)
-        plt.imsave(img_name + '_Contrast.JPG', contrast_img)
+        cv2.imwrite(img_name + '_Contrast.JPG', contrast_img)
+
 
         plt.figure(figsize=(20, 20))
         plt.subplot(1, 7, 1)
