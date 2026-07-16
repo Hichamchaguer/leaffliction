@@ -4,3 +4,4 @@ output_images/
 sol.py
 __pycache__/
 data/
+.gitignore
