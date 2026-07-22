@@ -1,66 +1,98 @@
-import os
 import sys
-import pandas as pd
-from srcs.blance_data import flip, rotate, skew, shear, crop, distortion
+import pathlib
+import random
+import cv2
+import albumentations as alb
 
 
-def blance_data(__type: int, img_path: str, src: str) -> None:
-    """_summary_
+TRANSFORMS = {
+    "flip": alb.HorizontalFlip(p=1.0),
+    "rotate": alb.Rotate(limit=30,p=1.0),
+    "skew": alb.Perspective(scale=(0.03, 0.08),p=1.0),
+    "shear": alb.Affine(shear=(-10, 10),p=1.0),
+    "crop": alb.RandomResizedCrop(size=(256, 256),scale=(0.85, 1.0),ratio=(0.9, 1.1),p=1.0),
+    "distortion": alb.OpticalDistortion(distort_limit=0.05,p=1.0)
+}
 
-    Args:
-        __type (int): _description_
-        img_path (str): _description_
-        src (str): _description_
-    """
-    blance = {
-        0: flip,
-        1: rotate,
-        2: skew,
-        3: shear,
-        4: crop,
-        5: distortion
-    }
-    if __type in blance:
-        blance[__type](img_path, src)
+def apply_augmentation(image):
 
+    augmented_name = random.choice(list(TRANSFORMS.keys())) # choose a random transforms :
+    transform = TRANSFORMS[augmented_name]
+
+    augmented = transform(image=image)["image"]
+    return augmented, augmented_name
+
+def check_count(folder, label):
+    return len(list(folder.glob(f"{label}/*")))
 
 def main():
-    try:
-        assert len(sys.argv) == 2, "Need only the directory path"
-        __dir1 = sys.argv[1]
-        __dir2 = 'analyze'
+    if len(sys.argv) != 2:
+        print("Usage: python augmentation.py <input_file>")
+        sys.exit(1)
 
-        for elem in os.listdir(__dir2):
-            if not elem.endswith('.csv'):
-                continue
-            path = os.path.join(__dir2, elem)
-            df = pd.read_csv(path)
-            max_val = df.max().max()
-            ind_max = df.max().idxmax()
-            for elm in os.listdir(__dir1):
-                path = os.path.join(__dir1, elm)
-                __ck = elm.startswith(elem.split('.')[0])
-                if not __ck or not os.path.isdir(path) or elm == ind_max:
-                    continue
-                val = df[elm][0]
-                if val >= max_val:
-                    break
-                indx = 0
-                images = sorted(os.listdir(path))
-                for img in images:
-                    if val >= max_val or len(images) >= max_val:
-                        break
-                    indx %= 6
-                    while indx < 6 and val < max_val:
-                        blance_data(indx, path, img)
-                        indx += 1
-                        val += 1
+    input_folder = sys.argv[1]
 
-    except AssertionError as err:
-        print(f"AssertionError: {err}")
-    except Exception as err:
-        print(f"Error exception {err} \nline: {err.__traceback__.tb_lineno}")
+    # convert input_folder into pathlib         
 
+    data_dir = pathlib.Path(input_folder)
+    black_rot = list(data_dir.glob("Apple_Black_rot/*"))
+
+    output_dir = pathlib.Path("augmented_directory")
+    data_img_dict = {}
+
+    for class_dir in data_dir.iterdir():
+        if class_dir.is_dir():
+            data_img_dict[class_dir.name] =list(class_dir.glob("*"))
+
+    max_len = max(len(images) for images in data_img_dict.values())
+
+    for label, images in data_img_dict.items():
+
+        class_dir = output_dir / label
+        class_dir.mkdir(parents=True, exist_ok=True)
+        current = len(images)
+        missing = max_len - current
+        # print("=" * 50)
+        # print(f"Class   : {label}")
+        # print(f"Current : {current}")
+        # print(f"Need    : {missing}")
+
+        
+        if check_count(output_dir, label) >= max_len:
+            print(f"Class {label} is already balanced in the output directory.")
+            continue
+        for img_path in images:
+            img = cv2.imread(str(img_path)) # read the images
+            if img is not None:
+                output_path = class_dir / img_path.name
+                cv2.imwrite(str(output_path), img)
+
+        if missing == 0:
+            print(f"Class {label} is already balanced.")
+            continue
+        for i in range(missing):
+
+            # Pick one original image randomly
+            img = random.choice(images)
+            image = cv2.imread(str(img)) # read the images
+            # convert BGR to RGB
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            # Apply augmentation
+            augmented, augmented_name = apply_augmentation(image)
+            # reconvert RGB to BGR
+            augmented = cv2.cvtColor(augmented, cv2.COLOR_RGB2BGR)
+            # Save the augmented image
+            output_path = (
+                class_dir /
+                f"{augmented_name}_{i}_{img.name}")
+
+            cv2.imwrite(str(output_path), augmented)
+
+        print(f"Number of images in {label}: {len(list(output_dir.glob(f'{label}/*')))}")
+        #     print(
+        #         f"{i+1:4d} -> {img.name}" # aumentation part 
+        #     )
+        # print()
 
 if __name__ == "__main__":
     main()
