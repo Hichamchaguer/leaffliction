@@ -1,0 +1,42 @@
+Train the model and then predict 
+You have a folder of leaf images, organized by disease, sitting on disk. our goal is to produce a single file that "knows" how to look at a new leaf photo and say what disease it has. Getting from "folder of images" to "a model that understands leaves" happens in ten distinct stages, and each one solves a specific problem the previous stage created.
+
+
+Stage 1
+
+before we start traing our model we need to know where is the data, how big is the images are how many round of training to run and where to stroe this data I chose to get this from the CLI and default some as they don't change much like size of images or round to train the model.
+some parameters like `epoch` mean how many time should our data go through the Neaurle Netwrork
+Exp: if you have 100 images the model should sees them 100 times so it could be consider 1 epoch if the NN saw them twice then 2 epoch. the model don't look at all picture at one go it dived it to `batches` 
+See CLi for more info how to pass parameter.
+then there is batch which is how many picture (data) the model look at before updating the weight(How strongly does this input feature influence the final answer?") and each time model go through a batch that is called itertion in a 100 example there is 3 iteration 
+
+START OF EPOCH 1 (10000 images)
+Step 1: Grab batch #1 (32 images)
+  → Model looks at each image
+  → Model guesses: "Is this a dog? 72% confidence"
+  → Compare guess to the correct label (yes/no)
+  → Calculate how wrong the guess was → this is the LOSS
+  → Adjust the model's internal "brain connections" (weights) to be less wrong next time
+  
+Step 2: Grab batch #2 (next 32 images)
+  → Same process, but now the model is slightly smarter
+  
+Step 3: Grab batch #3 (next 32 images)
+  → Same process, model gets a tiny bit smarter each time
+
+...repeat 313 times total...
+
+Step 313: Last batch (maybe just 16 images if dataset doesn't divide evenly)
+  → Final adjustment for this epoch
+
+END OF EPOCH 1 → The model has now seen ALL 10,000 images once 
+
+after this we do another epoch because 1 is not enough but we make sure our data is randmoized so the model doesn't memorise the order of data this takes us to stage 2
+
+Stage 2 
+
+after we load the data and randomizing it we then take 80% for training and keep 20% that the model doesn't see this 20% is used later to verfy how accurate our model is. 
+
+
+
+What comes out of this stage: two streams of images, plus something equally important — a list of class names, taken directly from the subfolder names in your dataset. This is the same principle Distribution.py used in Part 1: the folder structure itself defines what the model is trying to distinguish between. There is no separate label file; the folder a photo sits in is its label.

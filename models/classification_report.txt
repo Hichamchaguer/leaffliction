@@ -1,0 +1,14 @@
+                 precision    recall  f1-score   support
+
+Apple_Black_rot      0.948     0.965     0.956       318
+  Apple_healthy      0.994     0.981     0.987       318
+     Apple_rust      0.970     0.985     0.977       324
+     Apple_scab      0.965     0.947     0.956       320
+Grape_Black_rot      0.976     0.949     0.962       350
+     Grape_Esca      0.962     0.968     0.965       313
+  Grape_healthy      0.975     0.989     0.982       352
+     Grape_spot      0.994     1.000     0.997       329
+
+       accuracy                          0.973      2624
+      macro avg      0.973     0.973     0.973      2624
+   weighted avg      0.973     0.973     0.973      2624
