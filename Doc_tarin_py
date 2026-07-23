@@ -141,3 +141,16 @@ PS: what is mean and std:
 we start with normalization wich is just value divided by max value hence for each color in a pixel `RGB` we dived it by 255
 now our colors are between 0-1 we calculate their mean and std
 then we do standardization wich is just value (new calaclute 0-1) - mean then dived by 1 for each color 
+
+stage 5 
+
+now we build the model but just one last tiny step before that if we want to make model from scratch we will have to teach all
+from edges to corners to shapes well everything and will consume a lot of resource and time lucky for us we can use a pretrained model
+transform learning is instead of starting from nothing, you start from a network that has already been trained on over a million general photographs (of all kinds of everyday objects, not leaves)
+and has already learned to detect edges, textures, colors, and shapes extremely well.
+We borrow that already-learned visual knowledge and only teach the network the new part — recognizing disease patterns specifically.
+We chose MobileNetV2 it is a light model built so it can run in mobiles hence the name while it is small it is still highly capable
+it trains faster, uses less memory, and still reaches excellent accuracy on a task like this one, where the images are relatively simple
+this model was traind on 1.28 million images with 1000 class name the dataset name is imageNet-1k
+if we train this model on our data it will cause the already refined model to become less accurate and more prone to mistake so we do something called
+frezzing  layers 
