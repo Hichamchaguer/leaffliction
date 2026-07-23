@@ -120,6 +120,8 @@ Stage4
 last thing we need to do is to prepare the images for the network.
 because the images is just too Big. it is  value can range from 0 to 255 for each RGB in one pixel and that won't work because Math becomes unbalanced—big numbers dominate small ones for example green 200 while red 30 blue 59 green will dominate. the model takes 5-10x longer and then the model might not converge.
 what we need is to keep the value between -1 and 1. we passe the image through a specific mathematical transformation that rescales those values into a much smaller, centered range around 0
+This step is another way of Discribing our data using numbers the mean is to see where our data is center aka what is normal
+while std is how far or close our data to that center <mean> 
 
 PS: what is mean and std:
       mean: is just average you sum all then dived them by how much there is 
@@ -129,12 +131,13 @@ PS: what is mean and std:
       
       STD(Standard Deviation): This is to calculate how far are you from the average<mean>.
       STD = calculate how far each element from the average
-            data - mean
-            put this in a list then square  it
-            <some value could be negative>
-            then calculate their average 
-            then square root to get value.
-      
-now that we have mean and std what we need is to:
-First dived the value by 255
-then
+              
+              first for each element in the data
+                you subtract the mean then square it
+                < we sqaure for some value might be negative and that cancel postive one>
+              then you sum it all and dived it by N if it is the entire group or N-1 if it is sample
+              then square root it to get the value  
+
+we start with normalization wich is just value divided by max value hence for each color in a pixel `RGB` we dived it by 255
+now our colors are between 0-1 we calculate their mean and std
+then we do standardization wich is just value (new calaclute 0-1) - mean then dived by 1 for each color 
