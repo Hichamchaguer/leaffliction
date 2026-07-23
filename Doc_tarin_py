@@ -4,11 +4,11 @@ You have a folder of leaf images, organized by disease, sitting on disk. our goa
 
 Stage 1
 
-before we start traing our model we need to know where is the data, how big is the images are how many round of training to run and where to stroe this data I chose to get this from the CLI and default some as they don't change much like size of images or round to train the model.
-some parameters like `epoch` mean how many time should our data go through the Neaurle Netwrork
+before we start training our model we need to know where is the data, how big is the images are how many round of training to run and where to store this data I chose to get this from the CLI and default some as they don't change much like size of images or round to train the model.
+some parameters like `epoch` mean how many time should our data go through the Neaurle Network
 Exp: if you have 100 images the model should sees them 100 times so it could be consider 1 epoch if the NN saw them twice then 2 epoch. the model don't look at all picture at one go it dived it to `batches` 
 See CLi for more info how to pass parameter.
-then there is batch which is how many picture (data) the model look at before updating the weight(How strongly does this input feature influence the final answer?") and each time model go through a batch that is called itertion in a 100 example there is 3 iteration 
+then there is batch which is how many picture (data) the model look at before updating the weight(How strongly does this input feature influence the final answer?") and each time model go through a batch that is called iteration in a 100 example there is 3 iteration 
 
 START OF EPOCH 1 (10000 images)
 Step 1: Grab batch #1 (32 images)
@@ -31,12 +31,110 @@ Step 313: Last batch (maybe just 16 images if dataset doesn't divide evenly)
 
 END OF EPOCH 1 → The model has now seen ALL 10,000 images once 
 
-after this we do another epoch because 1 is not enough but we make sure our data is randmoized so the model doesn't memorise the order of data this takes us to stage 2
+after this we do another epoch because 1 is not enough but we make sure our data is randomized so the model doesn't memories the order of data this takes us to stage 2
 
 Stage 2 
 
-after we load the data and randomizing it we then take 80% for training and keep 20% that the model doesn't see this 20% is used later to verfy how accurate our model is. 
+after we load the data and randomizing it we then take 80% for training and keep 20% that the model doesn't know this 20% is used later to verify how accurate our model is. it is obvious our data will be labeled. that label is just the name of the directory the images reside in
+
 
 
 
 What comes out of this stage: two streams of images, plus something equally important — a list of class names, taken directly from the subfolder names in your dataset. This is the same principle Distribution.py used in Part 1: the folder structure itself defines what the model is trying to distinguish between. There is no separate label file; the folder a photo sits in is its label.
+
+Stage 3
+
+our labels will get store in json file before any training happen but why need to store the name and give it instead of just asking since our model can identify black spot from rust?
+will that because Models Speak Numbers, Not Words that means it can't utter the word rust or any instead you get number let say it is 7 that is a class index—a number representing a position in a list.
+
+TRAINING PHASE (Before the model learns anything)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Step 1: Read the label JSON file
+┌─────────────────────────────────────────────────┐
+│ {                                               │
+│   "0": "apple scab",      ← Position 0         │
+│   "1": "apple rust",      ← Position 1         │
+│   "2": "apple black rot", ← Position 2         │
+│   "3": "grape leaf blight", ← Position 3       │
+│   ...                                          │
+│   "7": "tomato mosaic virus" ← Position 7      │
+│ }                                               │
+└─────────────────────────────────────────────────┘
+
+Step 2: Build the mapping in memory
+┌─────────────────────────────────────────────────┐
+│ label_to_index = {                              │
+│   "apple scab": 0,          ← For training     │
+│   "apple rust": 1,          ← Convert labels   │
+│   "apple black rot": 2,     ← to numbers       │
+│   "grape leaf blight": 3,                       │
+│   ...                                          │
+│   "tomato mosaic virus": 7                      │
+│ }                                               │
+└─────────────────────────────────────────────────┘
+
+Step 3: Train the model
+┌─────────────────────────────────────────────────┐
+│ Image of apple scab → Model → Outputs: 0        │
+│ Image of tomato mosaic virus → Model → Outputs: 7 │
+│ Image of apple rust → Model → Outputs: 1        │
+│ ... (millions of adjustments)                   │
+└─────────────────────────────────────────────────┘
+
+After training: The model has learned:
+  "If you see circular brown spots on an apple → output 0"
+  "If you see yellow mottling on tomato leaves → output 7"
+
+
+
+
+  this is necessary because before training
+
+
+
+BEFORE TRAINING (Epoch -1) ← THIS IS WHERE IT MUST HAPPEN
+├── Read JSON file
+├── Build label_to_index dictionary
+├── Verify order is consistent
+├── Save the order to a separate file (class_names.json)
+└── NOW training can begin
+
+DURING TRAINING (Epoch 1-50)
+├── Model learns: "Image X → output Y"
+├── Model has NO concept of disease names
+├── Model only knows numbers
+└── The mapping is FROZEN (never changes)
+
+AFTER TRAINING (Inference time)
+├── Model outputs: 7
+├── Look up 7 in label_to_index dict
+├── Return: "tomato mosaic virus"
+└── This ONLY works if order hasn't changed!
+
+if the json file got corrupted  then even if the model works then the output is wrong
+
+
+Stage4
+
+last thing we need to do is to prepare the images for the network.
+because the images is just too Big. it is  value can range from 0 to 255 for each RGB in one pixel and that won't work because Math becomes unbalanced—big numbers dominate small ones for example green 200 while red 30 blue 59 green will dominate. the model takes 5-10x longer and then the model might not converge.
+what we need is to keep the value between -1 and 1. we passe the image through a specific mathematical transformation that rescales those values into a much smaller, centered range around 0
+
+PS: what is mean and std:
+      mean: is just average you sum all then dived them by how much there is 
+      simple average
+
+      @@@@@@@@@
+      
+      STD(Standard Deviation): This is to calculate how far are you from the average<mean>.
+      STD = calculate how far each element from the average
+            data - mean
+            put this in a list then square  it
+            <some value could be negative>
+            then calculate their average 
+            then square root to get value.
+      
+now that we have mean and std what we need is to:
+First dived the value by 255
+then
