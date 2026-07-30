@@ -2,3 +2,6 @@ images
 augmented_directory
 leaf
 .DS_Store
+models
+leaffliction.zip
+signature.txt

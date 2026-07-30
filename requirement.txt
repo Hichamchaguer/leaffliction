@@ -3,3 +3,5 @@ pandas
 opencv-python
 albumentations
 plantcv
+tensorflow 
+scikit-learn

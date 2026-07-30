@@ -4,6 +4,7 @@ import sys
 from plantcv import plantcv as pcv
 from matplotlib import pyplot as plt
 import numpy as np
+import cv2
 
 
 def analyze_saturation_correctly(img):
@@ -166,13 +167,20 @@ class ImageProcessor:
         self.img, self.path, self.filename = pcv.readimage(filename=img)
         self.dst = dst
         self.specific = specific
+        self.binary_mask = None
         self.mask = None
+        self._mask = None
+        self.upper_green = np.array([90, 255, 255])  # HSV upper bound for green
+        self.lower_green = np.array([25, 40, 40])    # HSV lower bound for green
+        self.upper_brown = np.array([25, 255, 2500])  # HSV upper bound for brown
+        self.lower_brown = np.array([10, 40, 40])    # HSV lower bound for brown
+        self.BLUE_RGB = (0, 0, 255)  # RGB color for blue
 
     def gaussian_blur(self):
         blur = pcv.gaussian_blur(
             img=self.img,
             ksize=(5, 5),
-            sigma_x=0, 
+            sigma_x=0,
             sigma_y=None
         )
 
@@ -190,7 +198,7 @@ class ImageProcessor:
     def create_mask(self):
 
         # Reduce noise
-        blur = pcv.gaussian_blur(
+        blur = pcv.gaussian_blur (
             img=self.img,
             ksize=(5, 5)
         )
@@ -204,10 +212,10 @@ class ImageProcessor:
         # Threshold
         s_treshold = pcv.threshold.binary (
             gray_img=s,
-            threshold=60,
+            threshold=90,
             object_type="light"
         )
-
+        self.binary_mask = s_treshold
         # Apply mask
         mask = pcv.apply_mask(
             img=self.img,
@@ -218,51 +226,133 @@ class ImageProcessor:
 
         return mask
 
-    def find_roi_objects(self):
-        # Step 1: Convert to LAB 'a' channel
-        gray_mask = pcv.rgb2gray_lab(
-            rgb_img=self.img,
-            channel="a"
-        )
-        # Step 2: Threshold
-        binary_mask = pcv.threshold.binary(
-            gray_img=gray_mask,
-            threshold=120,
-            object_type="dark"
-        )
-        # Step 3: Create ROI (full image)
-        roi = pcv.roi.rectangle(
-            img=self.img,           # ← Use original img for display
-            x=0,
-            y=0,
-            h=self.img.shape[0],
-            w=self.img.shape[1]
-        )
-        # Step 4: Filter mask by ROI
-        # roi.filter does NOT take roi_type — it keeps objects inside the ROI by default
-        filtered_mask = pcv.roi.filter(
-            mask=binary_mask,
-            roi=roi
-            # NO roi_type parameter here!
-        )
-        return filtered_mask
+    def _roi_objects_contour(self, mask_img):
+        """
+        Step IV.4: ROI Objects - Green overlay follows exact leaf contour
+        Blue frame = convex hull or bounding contour around the leaf
+        """
+        # Ensure binary mask
+        if len(mask_img.shape) == 3:
+            mask_img = cv2.cvtColor(mask_img, cv2.COLOR_BGR2GRAY)
+        _, binary_mask = cv2.threshold(mask_img, 127, 255, cv2.THRESH_BINARY)
+        
+        # Find contours
+        contours, _ = cv2.findContours(binary_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        if not contours:
+            return self.img
+        
+        # Keep largest contour (the leaf)
+        leaf_contour = max(contours, key=cv2.contourArea)
+        
+        # Create output
+        roi_img = self.img.copy()
+        
+        # === GREEN OVERLAY: Exact leaf shape ===
+        # Create green mask overlay
+        green_overlay = np.zeros_like(self.img)
+        green_overlay[:] = (0, 255, 0)  # BGR green
+        
+        # Apply only within contour
+        green_mask = np.zeros_like(binary_mask)
+        cv2.drawContours(green_mask, [leaf_contour], -1, 255, thickness=cv2.FILLED)
+        
+        # Bitwise AND to get green only on leaf
+        green_leaf = cv2.bitwise_and(green_overlay, green_overlay, mask=green_mask)
+        
+        # Blend with original (transparency)
+        alpha = 0.35
+        roi_img = cv2.addWeighted(roi_img, 1.0, green_leaf, alpha, 0)
+        
+        # === BLUE FRAME: Convex hull around leaf (not rectangle!) ===
+        # This creates a tight polygon around the leaf, not a box
+        hull = cv2.convexHull(leaf_contour)
+        cv2.drawContours(roi_img, [hull], -1, (255, 0, 0), thickness=4)  # Blue
+        
+        return roi_img
+
+# === COMPLETE PIPELINE ===
+    def roi_objects(self):
+
+        original = cv2.imread(self.pathname)
+        # Step 1: Gaussian blur
+        blurred = cv2.GaussianBlur(original, (5, 5), 0)
+        
+        # Step 2: Create mask (HSV thresholding)
+        hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
+        lower_green = np.array([25, 40, 40])
+        upper_green = np.array([85, 255, 255])
+        mask = cv2.inRange(hsv, lower_green, upper_green)
+        
+        # Clean mask
+        kernel = np.ones((5, 5), np.uint8)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
+        
+        # Step 3: ROI Objects - Choose your method:
+        
+        # Method A: Convex hull (recommended, matches your figure)
+        roi_result = self._roi_objects_contour(mask)
+        
+        return roi_result
 
     def analyze_object(self):
-        if self.specific == 'analyze':
-            pcv.analyze.size(
-                img=self.img,
-                labeled_mask=self.mask,
-                n_labels=1
-            )
+
+        analyse = pcv.analyze.size(
+            img=self.img,
+            labeled_mask=self.binary_mask,
+            n_labels=1
+        )
+        return analyse
 
     def pseudolandmarks(self):
 
-        if self.specific == 'pseudolandmarks':
-            top, bottom, center_v, left, right = pcv.homology.x_axis_pseudolandmarks(
-                img=self.img,
-                mask=self.mask
-            )
-        return top, bottom, left, right
+        if self.binary_mask is None:
+            self.create_mask()
+
+
+        labeled_mask, n_labels = pcv.create_labels(
+            mask=self.binary_mask
+        )
+
+
+        vis = self.img.copy()
+
+
+        top, bottom, center_v = pcv.homology.x_axis_pseudolandmarks(
+            img=self.img,
+            mask=self.binary_mask
+        )
+
+
+        groups = [
+            (top, (0,0,255)),
+            (bottom, (255,0,0)),
+            (center_v, (0,255,0))
+        ]
+
+
+        for pts, colour in groups:
+
+            for pt in pts:
+
+                x = int(pt[0][0])
+                y = int(pt[0][1])
+
+
+                cv2.circle(
+                    vis,
+                    (x,y),
+                    4,
+                    colour,
+                    -1
+                )
+
+
+        return cv2.cvtColor(
+            vis,
+            cv2.COLOR_BGR2RGB
+        )
 
 
     def apply_specifics(self):
@@ -293,10 +383,10 @@ def main():
 
     if args.image_files: # If image files are provided
         img, path, filename = pcv.readimage(filename=args.image_files)
-        # pcv.params.debug = "plot" 
         t = ImageProcessor(img=args.image_files, dst=None, specific=specs)
-        apply_mask = t.find_roi_objects()
-        show_image(image=apply_mask, title='roi_objects')
+        t.create_mask()
+        apply_mask = t.pseudolandmarks()
+        show_image(image=apply_mask, title='landmarks')
 
 
     if args.source and args.destination: # If source and destination directories are provided
