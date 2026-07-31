@@ -56,6 +56,10 @@ def main():
     try:
         assert len(sys.argv) == 2, "Need only the directory path"
         leaves = get_files(sys.argv[1])
+        if not len(leaves):
+            print("your dir is empty")
+            sys.exit(1)
+
         for key, val in leaves.items():
             _, axs = plt.subplots(1, 2, figsize=(12, 10))
             des = {k: v for k, v in sorted(val.items(),
@@ -66,9 +70,9 @@ def main():
             plot_bar(axs[1], keys, list(des.values()))
             plt.suptitle(key.lower() + " class distribution")
             plt.tight_layout()
-            plt.savefig("analyze/" + key.lower() + ".png")
+            plt.savefig("analyze/" + key.lower() + "_After.png")
             df = pd.DataFrame([list(des.values())], columns=des.keys())
-            df.to_csv("analyze/" + key + ".csv", index=False)
+            df.to_csv("analyze/" + key + "_After.csv", index=False)
         plt.show()
 
     except AssertionError as err:

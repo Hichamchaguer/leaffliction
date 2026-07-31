@@ -1,6 +1,7 @@
 import os
 import sys
 import pandas as pd
+from tqdm import tqdm
 from srcs.blance_data import flip, rotate, skew, shear, crop, distortion
 
 
@@ -30,6 +31,12 @@ def main():
         __dir1 = sys.argv[1]
         __dir2 = 'analyze'
 
+        if not os.path.isdir(__dir1):
+            print("This directory doesn't existe")
+            sys.exit(1)
+        if not len(os.listdir(__dir2)):
+            print("need csv files of analyze")
+            sys.exit(1)
         for elem in os.listdir(__dir2):
             if not elem.endswith('.csv'):
                 continue
@@ -37,7 +44,7 @@ def main():
             df = pd.read_csv(path)
             max_val = df.max().max()
             ind_max = df.max().idxmax()
-            for elm in os.listdir(__dir1):
+            for elm in tqdm(os.listdir(__dir1)):
                 path = os.path.join(__dir1, elm)
                 __ck = elm.startswith(elem.split('.')[0])
                 if not __ck or not os.path.isdir(path) or elm == ind_max:
