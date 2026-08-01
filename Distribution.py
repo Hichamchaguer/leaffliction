@@ -1,6 +1,5 @@
 import os
 import sys
-import pandas as pd
 import matplotlib.pyplot as plt
 
 
@@ -55,7 +54,15 @@ def plot_bar(ax: plt.axes, x: list, y: list) -> None:
 def main():
     try:
         assert len(sys.argv) == 2, "Need only the directory path"
+        if not os.path.isdir(sys.argv[1]):
+            print("Please provide a valid directory path")
+            sys.exit(1)
+
         leaves = get_files(sys.argv[1])
+        if not len(leaves):
+            print("your dir is empty")
+            sys.exit(1)
+
         for key, val in leaves.items():
             _, axs = plt.subplots(1, 2, figsize=(12, 10))
             des = {k: v for k, v in sorted(val.items(),
@@ -67,8 +74,6 @@ def main():
             plt.suptitle(key.lower() + " class distribution")
             plt.tight_layout()
             plt.savefig("analyze/" + key.lower() + ".png")
-            df = pd.DataFrame([list(des.values())], columns=des.keys())
-            df.to_csv("analyze/" + key + ".csv", index=False)
         plt.show()
 
     except AssertionError as err:
