@@ -123,14 +123,12 @@ def get_transformed_panel(image_path, image_size):
     directory), so predict.py still works standalone.
     """
     try:
-        from Transformation import ImageTransformation, Options
+        from Transformation import ImageProcessor
 
-        opt = Options(str(image_path))
-        transformer = ImageTransformation(image_path, dest=None, opt=opt)
+        transformer = ImageProcessor(image_path, dst=None, specific=None)
         transformer.original()
-        transformer.threshold()
-        transformer.m_blur()
-        blurred = transformer.blur()
+        transformer.gaussian_blur()
+        blurred = transformer.gaussian_blur()
 
         if blurred.ndim == 2:
             transformed_rgb = cv2.cvtColor(blurred, cv2.COLOR_GRAY2RGB)
@@ -149,8 +147,7 @@ def get_transformed_panel(image_path, image_size):
         return transformed_rgb, "Gaussian Blur (fallback)"
 
 
-def display_prediction(image_path, predicted_class, confidence,
-                        image_size):
+def display_prediction(image_path, predicted_class, confidence, image_size):
     img_bgr = cv2.imread(str(image_path))
     img_bgr = cv2.resize(img_bgr, (image_size, image_size))
     original_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
@@ -159,12 +156,17 @@ def display_prediction(image_path, predicted_class, confidence,
         image_path, image_size
     )
 
+    print('before figure')
+    print(f'interactive : {plt.isinteractive()}')
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 5.5))
+    print('figure created')
     ax1.imshow(original_rgb)
+    print('original displayed')
     ax1.set_title("Original", fontsize=12, fontweight="bold")
     ax1.axis("off")
 
     ax2.imshow(transformed_rgb)
+    print('transformed displayed')
     ax2.set_title(transform_label, fontsize=12, fontweight="bold")
     ax2.axis("off")
 
@@ -173,7 +175,8 @@ def display_prediction(image_path, predicted_class, confidence,
         fontsize=14, fontweight="bold", color="green",
     )
     plt.tight_layout()
-    plt.show(block=True)
+    plt.show()
+    print('finished')
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -202,7 +205,7 @@ def batch_test_accuracy(folder, model, class_names, image_size, n=100):
     for i, img_path in enumerate(sample, start=1):
         true_class = img_path.parent.name  # folder name = ground truth
         try:
-            predicted_class, confidence, _ = predict_image(
+            predicted_class, confidence, _ = predict_image (
                 model, class_names, img_path, image_size
             )
         except Exception as e:
@@ -256,18 +259,17 @@ def main():
                   "run a batch accuracy test, or point PATH at a "
                   "single image file instead.")
             sys.exit(1)
-        batch_test_accuracy(
+        batch_test_accuracy (
             path, model, class_names, args.image_size, n=args.batch_test
         )
 
     elif path.is_file():
-        predicted_class, confidence, _ = predict_image(
+        predicted_class, confidence, _ = predict_image (
             model, class_names, path, args.image_size
         )
         print(f"Class predicted : {predicted_class}")
         print(f"Confidence      : {confidence:.1f}%")
-        display_prediction(path, predicted_class, confidence,
-                            args.image_size)
+        display_prediction(path, predicted_class, confidence, args.image_size)
 
     else:
         print(f"ERROR: '{path}' is neither a file nor a directory.")

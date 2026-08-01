@@ -68,7 +68,7 @@ def analyze_saturation_correctly(img):
     return optimal_threshold
 
 
-def parse_args(): # Parse command-line arguments (-src, -dst, -mask)
+def parse_args():
     parser = argparse.ArgumentParser(description='Leaf image transformation')
 
     parser.add_argument(
@@ -175,6 +175,11 @@ class ImageProcessor:
         self.upper_brown = np.array([25, 255, 2500])  # HSV upper bound for brown
         self.lower_brown = np.array([10, 40, 40])    # HSV lower bound for brown
         self.BLUE_RGB = (0, 0, 255)  # RGB color for blue
+
+
+
+    def original(self):
+        return self.img
 
     def gaussian_blur(self):
         blur = pcv.gaussian_blur(
@@ -356,6 +361,7 @@ class ImageProcessor:
 
 
     def apply_specifics(self):
+        self.original()
         self.gaussian_blur()
         self.create_mask()
         self.find_roi_objects()
